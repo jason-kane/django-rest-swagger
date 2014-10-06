@@ -290,15 +290,22 @@ class ViewSetIntrospector(BaseViewIntrospector):
 
     def _resolve_methods(self):
         callback = self.pattern.callback
-        try:
+
+        def _get_code_closure(callback):
             try:
                 closure = callback.func_closure
-            except AttributeError:
-                closure = callback.__closure__
-            try:
                 code = callback.func_code
             except AttributeError:
+                closure = callback.__closure__
                 code = callback.__code__
+            return (code, closure)
+
+        code, closure = _get_code_closure(callback)
+        while code.co_name == "wrapped_view":
+            ## unwrap as many layers as needed to get down to the actual view
+            code, closure = _get_code_closure(closure[0].cell_contents)
+
+        try:
             freevars = code.co_freevars
         except AttributeError:
             raise RuntimeError('Unable to use callback invalid closure/function specified.')
