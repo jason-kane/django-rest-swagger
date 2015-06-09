@@ -170,17 +170,35 @@ LOGGING = {
     }
 }
 
+API_VERSION = 'v0.1.10'
+
 SWAGGER_SETTINGS = {
-    "exclude_namespaces": [],    # List URL namespaces to ignore
-    "api_version": '0.1.10',  # Specify your API's version (optional)
-    "token_type": 'Bearer',
-    "enabled_methods": [  # Methods to enable in UI
-        'get',
-        'post',
-        'put',
-        'patch',
-        'delete'
-    ],
-    "is_authenticated": False
+    'info': {
+        'title': 'Cigar Shop API',
+        'description': 'Description of the Cigar Shop',
+        'termsOfService': 'Application Terms of Service',
+        'contact': {
+            'name': 'Your Name',
+            'url': 'http://localhost/support',
+            'email': 'support@localhost'
+        },
+        'license': {
+            'name': 'Proprietary -- All rights reserved.',
+            'url': 'http://localhost/license.html'
+        },
+        'version': API_VERSION
+    },
+    'exclude_namespaces': [],
+    'api_version': API_VERSION,
+    'api_path': '/',
+    'api_key': '',
+    'token_type': 'Bearer',
+    'enabled_methods': ['get', 'post', 'put', 'patch', 'delete'],
+    'is_authenticated': False,
+    'is_superuser': False,
+    'permission_denied_handler': None,
+    'template_path': 'rest_framework_swagger/index.html',
+    'doc_expansion': 'none',
 }
+
 APPEND_SLASH = False

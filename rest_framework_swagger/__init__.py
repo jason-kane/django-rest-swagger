@@ -12,6 +12,21 @@ DEFAULT_SWAGGER_SETTINGS = {
     'permission_denied_handler': None,
     'template_path': 'rest_framework_swagger/index.html',
     'doc_expansion': 'none',
+    'info': {
+        'title': 'Application Title',
+        'description': 'Application Description',
+        'termsOfService': 'Application Terms of Service',
+        'contact': {
+            'name': 'Your Name',
+            'url': 'http://localhost/support',
+            'email': 'support@localhost'
+        },
+        'license': {
+            'name': 'Proprietary -- All rights reserved.',
+            'url': 'http://localhost/license.html'
+        },
+        'version': 'v0.1'
+    }
 }
 
 try:

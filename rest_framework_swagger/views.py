@@ -59,7 +59,7 @@ class SwaggerUIView(View):
         template_name = rfs.SWAGGER_SETTINGS.get('template_path')
         data = {
             'swagger_settings': {
-                'discovery_url': "%s/api-docs/" % get_full_base_path(request),
+                'discovery_url': "%s/swagger.json" % get_full_base_path(request),
                 'api_key': rfs.SWAGGER_SETTINGS.get('api_key', ''),
                 'token_type': rfs.SWAGGER_SETTINGS.get('token_type'),
                 'enabled_methods': mark_safe(
@@ -96,42 +96,151 @@ class SwaggerUIView(View):
             raise PermissionDenied()
 
 
-class SwaggerResourcesView(APIDocView):
+# class SwaggerResourcesView(APIDocView):
+#     renderer_classes = (JSONRenderer,)
+
+#     def get(self, request):
+#         apis = []
+#         resources = self.get_resources()
+
+#         for path in resources:
+#             apis.append({
+#                 'path': "/%s" % path,
+#             })
+
+#         return Response({
+#             'apiVersion': rfs.SWAGGER_SETTINGS.get('api_version', ''),
+#             'swaggerVersion': '1.2',
+#             'basePath': self.get_base_path(),
+#             'apis': apis,
+#             'info': rfs.SWAGGER_SETTINGS.get('info', {
+#                 'contact': '',
+#                 'description': '',
+#                 'license': '',
+#                 'licenseUrl': '',
+#                 'termsOfServiceUrl': '',
+#                 'title': '',
+#             }),
+#         })
+
+    # def get_base_path(self):
+    #     try:
+    #         base_path = rfs.SWAGGER_SETTINGS['base_path']
+    #     except KeyError:
+    #         return self.request.build_absolute_uri(
+    #             self.request.path).rstrip('/')
+    #     else:
+    #         protocol = 'https' if self.request.is_secure() else 'http'
+    #         return '{0}://{1}/{2}'.format(protocol, base_path, 'swagger.json')
+
+
+
+
+class SwaggerView(APIDocView):
     renderer_classes = (JSONRenderer,)
 
-    def get(self, request):
+    def get(self, request, *args, **kwargs):
         apis = []
         resources = self.get_resources()
 
         for path in resources:
-            apis.append({
-                'path': "/%s" % path,
-            })
+            apis.append(
+                self.get_api_for_resource(path)
+            )
+
+        generator = DocumentationGenerator()
+
+        tags = {}
+
+        paths = {}
+        # TODO: reformat the contents that come from generator, don't
+        # post-process it here.
+        for path in generator.generate(apis):
+            mypath = {}
+
+            try:
+                tag = path['path'].split('/')[2]
+            except IndexError:
+                tag = None
+
+            for operation in path.get('operations', []):
+                method = operation['method'].lower()
+                mypath[method] = {
+                    'description': operation['notes'],
+                    'summary': operation['summary'],
+                    'produces': [
+                        'application/json'
+                    ],
+                    'responses': {
+                        'default': {
+                            'description': 'Unknown',
+                            # 'schema': {
+                            #     '$ref': "#/definitions/ErrorModel"
+                            # }
+                        },
+                        200: {
+                            'description': 'Success'
+                        }
+                    }
+                }
+
+                if tag:
+                    mypath[method]["tags"] = [tag]
+
+            if tag and tag not in tags:
+                tags[tag] = {
+                    'name': tag,
+                    'description': tag
+                }
+
+            paths[path['path']] = mypath
+
+        tag_list = []
+        for tag in tags:
+            tag_list.append(tag)
+
+        definitions = {}
+        parameters = {}
+        responses = {}
+        securityDefinitions = {}
+        security = []
+        tags = []
+        externalDocs = {}
+
+        full_uri = self.api_full_uri.rstrip('/').split('/')
+        scheme = full_uri[0].rstrip(':')
+        host = '/'.join(full_uri[2:3])
+        basePath = "/" + '/'.join(full_uri[3:])
 
         return Response({
-            'apiVersion': rfs.SWAGGER_SETTINGS.get('api_version', ''),
-            'swaggerVersion': '1.2',
-            'basePath': self.get_base_path(),
-            'apis': apis,
-            'info': rfs.SWAGGER_SETTINGS.get('info', {
-                'contact': '',
-                'description': '',
-                'license': '',
-                'licenseUrl': '',
-                'termsOfServiceUrl': '',
-                'title': '',
-            }),
+            'swagger': '2.0',
+            'info': rfs.SWAGGER_SETTINGS['info'],
+            'host': host,
+            'basePath': basePath,
+            'schemes': [scheme],
+            'consumes': ['application/json'],
+            'produces': ['application/json'],
+
+            'paths': paths,
+            'definitions': definitions,
+            'parameters': parameters,
+            'responses': responses,
+            'securityDefinitions': securityDefinitions,
+            'security': security,
+            'tags': tag_list,
+            'externalDocs': externalDocs
+
+            # 'apiVersion': rfs.SWAGGER_SETTINGS.get('api_version', ''),
+            # 'swaggerVersion': '2.0',
+
+            # 'apis': generator.generate(apis),
+            # 'models': generator.get_models(apis),
         })
 
-    def get_base_path(self):
-        try:
-            base_path = rfs.SWAGGER_SETTINGS['base_path']
-        except KeyError:
-            return self.request.build_absolute_uri(
-                self.request.path).rstrip('/')
-        else:
-            protocol = 'https' if self.request.is_secure() else 'http'
-            return '{0}://{1}/{2}'.format(protocol, base_path, 'api-docs')
+    def get_api_for_resource(self, filter_path):
+        urlparser = UrlParser()
+        urlconf = getattr(self.request, "urlconf", None)
+        return urlparser.get_apis(urlconf=urlconf, filter_path=filter_path)
 
     def get_resources(self):
         urlparser = UrlParser()
@@ -142,24 +251,23 @@ class SwaggerResourcesView(APIDocView):
         resources = urlparser.get_top_level_apis(apis)
         return resources
 
+# class SwaggerApiView(APIDocView):
+#     renderer_classes = (JSONRenderer,)
 
-class SwaggerApiView(APIDocView):
-    renderer_classes = (JSONRenderer,)
+#     def get(self, request, path):
+#         apis = self.get_api_for_resource(path)
+#         generator = DocumentationGenerator()
 
-    def get(self, request, path):
-        apis = self.get_api_for_resource(path)
-        generator = DocumentationGenerator()
+#         return Response({
+#             'apiVersion': rfs.SWAGGER_SETTINGS.get('api_version', ''),
+#             'swaggerVersion': '1.2',
+#             'basePath': self.api_full_uri.rstrip('/'),
+#             'resourcePath': '/' + path,
+#             'apis': generator.generate(apis),
+#             'models': generator.get_models(apis),
+#         })
 
-        return Response({
-            'apiVersion': rfs.SWAGGER_SETTINGS.get('api_version', ''),
-            'swaggerVersion': '1.2',
-            'basePath': self.api_full_uri.rstrip('/'),
-            'resourcePath': '/' + path,
-            'apis': generator.generate(apis),
-            'models': generator.get_models(apis),
-        })
-
-    def get_api_for_resource(self, filter_path):
-        urlparser = UrlParser()
-        urlconf = getattr(self.request, "urlconf", None)
-        return urlparser.get_apis(urlconf=urlconf, filter_path=filter_path)
+#     def get_api_for_resource(self, filter_path):
+#         urlparser = UrlParser()
+#         urlconf = getattr(self.request, "urlconf", None)
+#         return urlparser.get_apis(urlconf=urlconf, filter_path=filter_path)

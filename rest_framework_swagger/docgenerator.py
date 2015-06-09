@@ -25,12 +25,16 @@ class DocumentationGenerator(object):
         Returns documentation for a list of APIs
         """
         api_docs = []
-        for api in apis:
-            api_docs.append({
-                'description': IntrospectorHelper.get_summary(api['callback']),
-                'path': api['path'],
-                'operations': self.get_operations(api, apis),
-            })
+        for section in apis:
+            for api in section:
+                #try:
+                api_docs.append({
+                    'description': IntrospectorHelper.get_summary(api['callback']),
+                    'path': api['path'],
+                    'operations': self.get_operations(api, section),
+                })
+                #except TypeError:
+                #    raise TypeError('api: %r' % api)
 
         return api_docs
 
@@ -38,6 +42,7 @@ class DocumentationGenerator(object):
         path = api['path']
         pattern = api['pattern']
         callback = api['callback']
+
         if callback.__module__ == 'rest_framework.decorators':
             return WrappedAPIViewIntrospector(callback, path, pattern)
         elif issubclass(callback, viewsets.ViewSetMixin):
@@ -216,16 +221,17 @@ class DocumentationGenerator(object):
         """
         serializers = set()
 
-        for api in apis:
-            introspector = self.get_introspector(api, apis)
-            for method_introspector in introspector:
-                serializer = self._get_method_serializer(method_introspector)
-                if serializer is not None:
-                    serializers.add(serializer)
-                extras = method_introspector.get_extra_serializer_classes()
-                for extra in extras:
-                    if extra is not None:
-                        serializers.add(extra)
+        for section in apis:
+            for api in section:
+                introspector = self.get_introspector(api, section)
+                for method_introspector in introspector:
+                    serializer = self._get_method_serializer(method_introspector)
+                    if serializer is not None:
+                        serializers.add(serializer)
+                    extras = method_introspector.get_extra_serializer_classes()
+                    for extra in extras:
+                        if extra is not None:
+                            serializers.add(extra)
 
         return serializers
 
