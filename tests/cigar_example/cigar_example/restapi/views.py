@@ -212,6 +212,11 @@ def create_jambalaya(request):
     Create a jambalaya recipe
     ---
     serializer: JambalayaSerializer
+    responseMessages:
+        - code: 201
+          message: Created
+        - code: 300
+          message: Bad Request
     """
     serializer = JambalayaSerializer(data=request.DATA)
     if serializer.is_valid():

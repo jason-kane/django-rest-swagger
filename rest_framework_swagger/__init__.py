@@ -22,8 +22,8 @@ DEFAULT_SWAGGER_SETTINGS = {
             'email': 'support@localhost'
         },
         'license': {
-            'name': 'Proprietary -- All rights reserved.',
-            'url': 'http://localhost/license.html'
+            'name': 'Apache 2.0',
+            'url': 'http://www.apache.org/licenses/LICENSE-2.0.html'
         },
         'version': 'v0.1'
     }

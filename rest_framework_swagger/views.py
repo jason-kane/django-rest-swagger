@@ -150,8 +150,9 @@ class SwaggerView(APIDocView):
 
         generator = DocumentationGenerator()
 
-        tags = {}
+        #parameters = generator.get_models(apis)
 
+        tags = {}
         paths = {}
         # TODO: reformat the contents that come from generator, don't
         # post-process it here.
@@ -164,24 +165,46 @@ class SwaggerView(APIDocView):
                 tag = None
 
             for operation in path.get('operations', []):
+
+                # {
+                #     'parameters': [
+                #         {'name': 'cigar', 'paramType': 'form', 'required': True, 'type': 'string', 'description': ''},
+                #         {'name': 'jambalaya', 'paramType': 'form', 'required': True, 'type': 'string', 'description': ''}
+                #     ],
+                #     'nickname': u'Drop_Cigar_In_Jambalaya_POST',
+                #     'notes': u'<p>Make a cigar jambalaya</p>',
+                #     'summary': u'Make a cigar jambalaya',
+                #     'type': 'CigarJambalayaSerializer',
+                #     'method': 'POST'
+                # }",
+                responses = {}
+
+                response_messages = operation.get('responseMessages', [])
+                if len(response_messages) == 0:
+                    responses['default'] = {'description': 'Unknown'}
+
+                for response in response_messages:
+                    responses[response['code']] = {
+                        'description': response['message']
+                    }
+
+                    # TODO : this is almost certainly wrong
+                    if response['responseModel']:
+                        response[response['code']]['schema'] = {
+                            "$ref": response['responseModel']
+                        }
+
+
                 method = operation['method'].lower()
                 mypath[method] = {
+                    #'debug': operation,
                     'description': operation['notes'],
                     'summary': operation['summary'],
                     'produces': [
                         'application/json'
                     ],
-                    'responses': {
-                        'default': {
-                            'description': 'Unknown',
-                            # 'schema': {
-                            #     '$ref': "#/definitions/ErrorModel"
-                            # }
-                        },
-                        200: {
-                            'description': 'Success'
-                        }
-                    }
+                    'parameters': operation.get('parameters', []),
+                    'responses': responses
                 }
 
                 if tag:
@@ -200,11 +223,8 @@ class SwaggerView(APIDocView):
             tag_list.append(tag)
 
         definitions = {}
-        parameters = {}
-        responses = {}
         securityDefinitions = {}
         security = []
-        tags = []
         externalDocs = {}
 
         full_uri = self.api_full_uri.rstrip('/').split('/')
@@ -223,18 +243,12 @@ class SwaggerView(APIDocView):
 
             'paths': paths,
             'definitions': definitions,
-            'parameters': parameters,
-            'responses': responses,
+            #'parameters': parameters,
+            'responses': {},
             'securityDefinitions': securityDefinitions,
             'security': security,
             'tags': tag_list,
             'externalDocs': externalDocs
-
-            # 'apiVersion': rfs.SWAGGER_SETTINGS.get('api_version', ''),
-            # 'swaggerVersion': '2.0',
-
-            # 'apis': generator.generate(apis),
-            # 'models': generator.get_models(apis),
         })
 
     def get_api_for_resource(self, filter_path):
