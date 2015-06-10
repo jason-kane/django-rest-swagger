@@ -1,5 +1,7 @@
 # Django REST Swagger
 
+This is an experimental fork of Django REST Swagger that uses Swagger 2.0
+
 [![build-status-badge]][build-status]
 [![pypi-version]][pypi]
 [![license-badge]][license]
